@@ -1,0 +1,3 @@
+# Ignore the config file with sensitive info
+config.py
+.env
