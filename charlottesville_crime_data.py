@@ -9,6 +9,8 @@ from dotenv import load_dotenv
 # To run:
 # python -m streamlit run charlottesville_crime_data.py
 
+st.set_page_config(page_title="Charlottesville: Crime Data", layout="wide")
+
 # Load local environment variables from .env if present
 load_dotenv()
 
@@ -58,8 +60,6 @@ else:
 #######################################
 # Page Config & Data Loading
 #######################################
-
-st.set_page_config(page_title="Charlottesville: Crime Data", layout="wide")
 
 @st.cache_data
 
