@@ -9,28 +9,32 @@ from dotenv import load_dotenv
 # To run:
 # python -m streamlit run charlottesville_crime_data.py
 
-# Load the environment variables from .env (if present)
+import os
+from dotenv import load_dotenv
+
+# Load local environment variables from .env if present
 load_dotenv()
 
-# Retrieve the variables from the environment (or from st.secrets if available)
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY") or (st.secrets.get("GOOGLE_API_KEY") if hasattr(st, 'secrets') else None)
-WORKING_DIR = os.getenv("WORKING_DIR") or (st.secrets.get("WORKING_DIR") if hasattr(st, 'secrets') else None)
+# Try to load variables from environment (or Streamlit secrets)
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+WORKING_DIR = os.getenv("WORKING_DIR")
 
-# Optionally, check if these values were set, and if not, try to import from your local config file
+# Fallback: try to load from local config.py if available
 if GOOGLE_API_KEY is None or WORKING_DIR is None:
     try:
-        import config  # This is the local config.py that isn’t committed
+        import config  # This file is kept local and not committed
         GOOGLE_API_KEY = config.GOOGLE_API_KEY
         WORKING_DIR = config.WORKING_DIR
     except ImportError:
-        raise RuntimeError("No configuration found. Please set your environment variables or create a local config.py.")
+        raise RuntimeError("No configuration found. Please set your environment variables (via .env or Streamlit secrets) or create a local config.py.")
 
-# (Optional) Convert WORKING_DIR to an absolute path if needed:
+# Change working directory if set
 if not os.path.isabs(WORKING_DIR):
     WORKING_DIR = os.path.join(os.getcwd(), WORKING_DIR)
+os.chdir(WORKING_DIR)
 
-print("Google API Key:", GOOGLE_API_KEY)
-print("Working Directory:", WORKING_DIR)
+#print("Google API Key:", GOOGLE_API_KEY)
+#print("Working Directory:", WORKING_DIR)
 
 #######################################
 # Page Config & Data Loading
