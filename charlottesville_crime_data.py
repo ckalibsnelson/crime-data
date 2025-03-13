@@ -73,14 +73,14 @@ def load_data():
     
     # OS check: If not running on Windows and working_dir looks like a Windows path, warn and use current directory.
     if os.name != "nt" and (working_dir.startswith("C:") or working_dir.startswith("c:")):
-        st.warning("WORKING_DIR is set to a Windows path and will be ignored in this environment. Using the current working directory instead.")
+        #st.warning("WORKING_DIR is set to a Windows path and will be ignored in this environment. Using the current working directory instead.")
         working_dir = os.getcwd()
     elif not os.path.isabs(working_dir):
         working_dir = os.path.join(os.getcwd(), working_dir)
     
     # Change working directory and display it on the app.
     os.chdir(working_dir)
-    st.write("Current working directory:", os.getcwd())
+    #st.write("Current working directory:", os.getcwd())
     
     # Construct the full path to your Excel file
     csv_path = os.path.join(working_dir, "data", "charlottesville_crime_incidents.xlsx")
@@ -102,7 +102,7 @@ def load_data():
 
 # Load the data
 df = load_data()
-st.write(f"Data loaded with {len(df)} rows.")
+#st.write(f"Data loaded with {len(df)} rows.")
 
 # Debugging: Print the number of rows after initial filtering
 #st.write(f"Number of rows after initial filtering: {len(df)}")
@@ -114,7 +114,13 @@ st.write(f"Data loaded with {len(df)} rows.")
 st.title("Charlottesville: Crime Data")
 st.markdown("""
 **Data Source:** [https://opendata.charlottesville.org/datasets/charlottesville::crime-data/about](https://opendata.charlottesville.org/datasets/charlottesville::crime-data/about)
+""")
 
+# Calculate the latest refresh date
+latest_refresh_date = df["Date"].max().date()
+st.markdown(f"**Latest Refresh Date:** {latest_refresh_date}")
+
+st.markdown("""
 **Summary:**  
             
 *Crime data represents the initial information that is provided by individuals calling for police assistance. Please note that the dataset only contains the last 5 years. 
