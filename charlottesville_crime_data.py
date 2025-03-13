@@ -71,23 +71,29 @@ def load_data():
         except ImportError:
             raise RuntimeError("No working directory configuration found. Please set it in st.secrets or in config.py.")
 
-    # Construct the full path to your CSV file
+    # OS check: If not running on Windows and the working_dir looks like a Windows path, warn and use the current directory.
+    if os.name != "nt" and (working_dir.startswith("C:") or working_dir.startswith("c:")):
+        st.warning("WORKING_DIR is set to a Windows path and will be ignored in this environment. Using the current working directory instead.")
+        working_dir = os.getcwd()
+    elif not os.path.isabs(working_dir):
+        working_dir = os.path.join(os.getcwd(), working_dir)
+    
+    os.chdir(working_dir)
+    
+    # Construct the full path to your Excel file
     csv_path = os.path.join(working_dir, "data", "charlottesville_crime_incidents.xlsx")
     
-    # Optional: Check if the file exists
+    # Check if the file exists
     if not os.path.exists(csv_path):
         raise FileNotFoundError(f"CSV file not found at: {csv_path}")
-
-    # Read the CSV file using the full path
+    
+    # Read the Excel file using the full path
     try:
         df = pd.read_excel(csv_path)
     except Exception as e:
-        raise RuntimeError(f"Error reading CSV file at {csv_path}: {e}")
+        raise RuntimeError(f"Error reading Excel file at {csv_path}: {e}")
     
     df["zip"] = df["zip"].astype(str)
-    
-    # Debugging: Print the number of rows after loading the data
-    #st.write(f"Number of rows after loading data: {len(df)}")
     
     return df
 
