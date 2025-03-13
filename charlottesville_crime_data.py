@@ -11,13 +11,6 @@ from dotenv import load_dotenv
 
 st.set_page_config(page_title="Charlottesville: Crime Data", layout="wide")
 
-# Load local environment variables from .env if present
-load_dotenv()
-
-import os
-from dotenv import load_dotenv
-import streamlit as st
-
 # Load environment variables from .env (for local development)
 load_dotenv()
 
