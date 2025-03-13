@@ -56,13 +56,20 @@ else:
 
 @st.cache_data
 
+import os
+import pandas as pd
+import streamlit as st
+from dotenv import load_dotenv
+
+load_dotenv()
+
 def load_data():
     # Try to get WORKING_DIR from st.secrets directly...
     working_dir = st.secrets.get("WORKING_DIR")
     # ...or from the "general" section if not found.
     if not working_dir:
         working_dir = st.secrets.get("general", {}).get("WORKING_DIR")
-
+    
     # Fallback: If WORKING_DIR isn't found in secrets, try importing config.py
     if not working_dir:
         try:
@@ -70,35 +77,39 @@ def load_data():
             working_dir = config.WORKING_DIR
         except ImportError:
             raise RuntimeError("No working directory configuration found. Please set it in st.secrets or in config.py.")
-
-    # OS check: If not running on Windows and the working_dir looks like a Windows path, warn and use the current directory.
+    
+    # OS check: If not running on Windows and working_dir looks like a Windows path, warn and use current directory.
     if os.name != "nt" and (working_dir.startswith("C:") or working_dir.startswith("c:")):
         st.warning("WORKING_DIR is set to a Windows path and will be ignored in this environment. Using the current working directory instead.")
         working_dir = os.getcwd()
     elif not os.path.isabs(working_dir):
         working_dir = os.path.join(os.getcwd(), working_dir)
     
+    # Change working directory and display it on the app.
     os.chdir(working_dir)
+    st.write("Current working directory:", os.getcwd())
     
     # Construct the full path to your Excel file
     csv_path = os.path.join(working_dir, "data", "charlottesville_crime_incidents.xlsx")
     
     # Check if the file exists
     if not os.path.exists(csv_path):
-        raise FileNotFoundError(f"CSV file not found at: {csv_path}")
+        raise FileNotFoundError(f"Excel file not found at: {csv_path}")
     
-    # Read the Excel file using the full path
+    # Read the Excel file (requires openpyxl)
     try:
         df = pd.read_excel(csv_path)
     except Exception as e:
-        raise RuntimeError(f"Error reading Excel file at {csv_path}: {e}")
+        raise RuntimeError(f"Error reading Excel file at {csv_path}: {e}. Make sure 'openpyxl' is installed.")
     
+    # Convert zip column to string
     df["zip"] = df["zip"].astype(str)
     
     return df
 
 # Load the data
 df = load_data()
+st.write(f"Data loaded with {len(df)} rows.")
 
 # Debugging: Print the number of rows after initial filtering
 #st.write(f"Number of rows after initial filtering: {len(df)}")

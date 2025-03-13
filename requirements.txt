@@ -1,2 +1,3 @@
 plotly
 python-dotenv
+openpyxl
