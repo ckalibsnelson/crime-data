@@ -9,29 +9,48 @@ from dotenv import load_dotenv
 # To run:
 # python -m streamlit run charlottesville_crime_data.py
 
-import os
-from dotenv import load_dotenv
-
 # Load local environment variables from .env if present
 load_dotenv()
 
-# Try to load variables from environment (or Streamlit secrets)
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-WORKING_DIR = os.getenv("WORKING_DIR")
+import os
+from dotenv import load_dotenv
+import streamlit as st
 
-# Fallback: try to load from local config.py if available
+# Load environment variables from .env (for local development)
+load_dotenv()
+
+# First, try to use st.secrets
+try:
+    secrets = st.secrets["general"]
+    GOOGLE_API_KEY = secrets["GOOGLE_API_KEY"]
+    WORKING_DIR = secrets["WORKING_DIR"]
+except Exception:
+    GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+    WORKING_DIR = os.getenv("WORKING_DIR")
+
+# Fallback: try to load from local config.py (if it exists)
 if GOOGLE_API_KEY is None or WORKING_DIR is None:
     try:
-        import config  # This file is kept local and not committed
+        import config  # local config.py (not committed)
         GOOGLE_API_KEY = config.GOOGLE_API_KEY
         WORKING_DIR = config.WORKING_DIR
     except ImportError:
-        raise RuntimeError("No configuration found. Please set your environment variables (via .env or Streamlit secrets) or create a local config.py.")
+        raise RuntimeError("No configuration found. Please set your st.secrets, environment variables, or create a local config.py.")
 
-# Change working directory if set
-if not os.path.isabs(WORKING_DIR):
-    WORKING_DIR = os.path.join(os.getcwd(), WORKING_DIR)
-os.chdir(WORKING_DIR)
+# Handle WORKING_DIR differently depending on the OS.
+if os.name == 'nt':
+    # On Windows: ensure WORKING_DIR is an absolute path and change directory.
+    if not os.path.isabs(WORKING_DIR):
+        WORKING_DIR = os.path.join(os.getcwd(), WORKING_DIR)
+    os.chdir(WORKING_DIR)
+else:
+    # On non-Windows (e.g., Streamlit Cloud), if WORKING_DIR looks like a Windows path, warn and skip.
+    if WORKING_DIR.startswith("C:"):
+        st.warning("WORKING_DIR is set to a Windows path and will be ignored on this deployment environment.")
+    else:
+        if not os.path.isabs(WORKING_DIR):
+            WORKING_DIR = os.path.join(os.getcwd(), WORKING_DIR)
+        os.chdir(WORKING_DIR)
 
 #print("Google API Key:", GOOGLE_API_KEY)
 #print("Working Directory:", WORKING_DIR)
