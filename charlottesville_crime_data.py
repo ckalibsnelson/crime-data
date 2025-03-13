@@ -57,12 +57,11 @@ else:
 @st.cache_data
 
 def load_data():
-    # First try to get WORKING_DIR from st.secrets
-    working_dir = None
-    try:
+    # Try to get WORKING_DIR from st.secrets directly...
+    working_dir = st.secrets.get("WORKING_DIR")
+    # ...or from the "general" section if not found.
+    if not working_dir:
         working_dir = st.secrets.get("general", {}).get("WORKING_DIR")
-    except Exception:
-        pass
 
     # Fallback: If WORKING_DIR isn't found in secrets, try importing config.py
     if not working_dir:
