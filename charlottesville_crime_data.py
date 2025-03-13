@@ -56,13 +56,6 @@ else:
 
 @st.cache_data
 
-import os
-import pandas as pd
-import streamlit as st
-from dotenv import load_dotenv
-
-load_dotenv()
-
 def load_data():
     # Try to get WORKING_DIR from st.secrets directly...
     working_dir = st.secrets.get("WORKING_DIR")
