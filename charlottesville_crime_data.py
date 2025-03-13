@@ -57,8 +57,20 @@ else:
 @st.cache_data
 
 def load_data():
-    # Use the WORKING_DIR variable from config.py
-    working_dir = config.WORKING_DIR
+    # First try to get WORKING_DIR from st.secrets
+    working_dir = None
+    try:
+        working_dir = st.secrets.get("general", {}).get("WORKING_DIR")
+    except Exception:
+        pass
+
+    # Fallback: If WORKING_DIR isn't found in secrets, try importing config.py
+    if not working_dir:
+        try:
+            import config
+            working_dir = config.WORKING_DIR
+        except ImportError:
+            raise RuntimeError("No working directory configuration found. Please set it in st.secrets or in config.py.")
 
     # Construct the full path to your CSV file
     csv_path = os.path.join(working_dir, "data", "charlottesville_crime_incidents.xlsx")
