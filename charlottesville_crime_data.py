@@ -38,14 +38,14 @@ if os.name == 'nt':
     if not os.path.isabs(WORKING_DIR):
         WORKING_DIR = os.path.join(os.getcwd(), WORKING_DIR)
     os.chdir(WORKING_DIR)
-else:
+#else:
     # On non-Windows (e.g., Streamlit Cloud), if WORKING_DIR looks like a Windows path, warn and skip.
-    if WORKING_DIR.startswith("C:"):
-        st.warning("WORKING_DIR is set to a Windows path and will be ignored on this deployment environment.")
-    else:
-        if not os.path.isabs(WORKING_DIR):
-            WORKING_DIR = os.path.join(os.getcwd(), WORKING_DIR)
-        os.chdir(WORKING_DIR)
+    #if WORKING_DIR.startswith("C:"):
+        #st.warning("WORKING_DIR is set to a Windows path and will be ignored on this deployment environment.")
+    #else:
+        #if not os.path.isabs(WORKING_DIR):
+            #WORKING_DIR = os.path.join(os.getcwd(), WORKING_DIR)
+        #os.chdir(WORKING_DIR)
 
 #print("Google API Key:", GOOGLE_API_KEY)
 #print("Working Directory:", WORKING_DIR)
