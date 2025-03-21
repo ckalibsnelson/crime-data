@@ -129,17 +129,12 @@ dashboard_refresh_date = datetime.datetime.now().date()
 st.markdown(f"**Dashboard Last Refreshed:** {dashboard_refresh_date}")
 
 st.markdown("""
-**Please Note:**  
-When selecting filters, please be patient as the dashboard may take a moment to load. The "Running" symbol at the top right corner of the app indicates that the dashboard is processing your selection.
+**Please Note:** When selecting filters, please be patient as the dashboard may take a moment to load. The "Running" symbol at the top right corner of the app indicates that the dashboard is processing your selection.
 """)
 
 st.markdown("""
-**Summary:**  
-            
-*Crime data represents the initial information that is provided by individuals calling for police assistance. Please note that the dataset only contains the last 5 years.  
-Remaining information is often amended for accuracy after an Officer arrives and investigates the reported incident. Most often, the changes are made to more accurately reflect the official legal definition of the crimes reported.  
-An example of this is for someone to report that they have been "robbed," when their home was broken into while they were away. The official definition of "robbery" is to take something by force.  
-An unoccupied home being broken into, is actually defined as a "burglary," or a "breaking and entering." While there are mechanisms in place to make each initial call as accurate as possible, some events require evaluation upon arrival.  
+**Summary:**         
+*Crime data represents the initial information that is provided by individuals calling for police assistance. Please note that the dataset only contains the last 5 years.  Remaining information is often amended for accuracy after an Officer arrives and investigates the reported incident. Most often, the changes are made to more accurately reflect the official legal definition of the crimes reported. An example of this is for someone to report that they have been "robbed," when their home was broken into while they were away. The official definition of "robbery" is to take something by force.  An unoccupied home being broken into, is actually defined as a "burglary," or a "breaking and entering." While there are mechanisms in place to make each initial call as accurate as possible, some events require evaluation upon arrival.  
 Caution should be used when making assumptions based solely on the data provided, as they may not represent the official crime reports.*
 """)
 
@@ -326,8 +321,7 @@ else:
 
 # New metrics for the first row
 incidents_last3days = filtered_df[filtered_df["Date"].dt.date >= (current_date - pd.Timedelta(days=3)).date()]["IncidentID"].nunique()
-yesterday = (current_date - pd.Timedelta(days=1)).date()
-incidents_yesterday = filtered_df[filtered_df["Date"].dt.date == yesterday]["IncidentID"].nunique()
+incidents_last2weeks = filtered_df[filtered_df["Date"].dt.date >= (current_date - pd.Timedelta(days=14)).date()]["IncidentID"].nunique()
 
 # New metrics for the second row: Week over week growth and Quarter over quarter growth.
 # Week over Week Growth:
@@ -388,9 +382,9 @@ row1 = st.columns(6)
 row1[0].metric("Total Incidents", total_incidents)
 row1[1].metric("Incidents Last Month", incidents_last_month)
 row1[2].metric("Incidents This Month", incidents_this_month)
-row1[3].metric("Incidents Last 7 Days", incidents_last7days)
-row1[4].metric("Incidents Last 3 Days", incidents_last3days)
-row1[5].metric("Incidents Yesterday", incidents_yesterday)
+row1[3].metric("Incidents Last 2 Weeks", incidents_last2weeks)
+row1[4].metric("Incidents Last 7 Days", incidents_last7days)
+row1[5].metric("Incidents Last 3 Days", incidents_last3days)
 
 # Layout for second row of metrics (6 metrics)
 
@@ -774,7 +768,7 @@ fig_geo = px.density_mapbox(
     z="IncidentCount",  # use the new column for intensity
     radius=10,
     center=dict(lat=38.0293, lon=-78.4767),  # approximate center of Charlottesville
-    zoom=12,
+    zoom=14,
     mapbox_style="open-street-map",
     title="Incident Frequency by Geography"
 )
@@ -846,7 +840,7 @@ st.markdown("""
 #st.info("Using secrets from Streamlit Cloud")
 
 # Print the path of the CSV file at the end
-st.write(f"Path of the CSV file: {csv_path}")
+#st.write(f"Path of the CSV file: {csv_path}")
 
 # Print the working directory at the end
 # st.write(f"Current working directory: {os.getcwd()}")
