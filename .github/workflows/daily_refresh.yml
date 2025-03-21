@@ -1,0 +1,83 @@
+name: Daily Data Refresh
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Runs every day at midnight UTC
+  workflow_dispatch:    # Allows manual triggering
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install papermill jupyter
+        continue-on-error: false
+
+      - name: Install Jupyter Kernel
+        run: |
+          python -m pip install ipykernel
+          python -m ipykernel install --user --name python3 --display-name "Python 3"
+        continue-on-error: false
+
+      - name: Verify API key and working directory
+        run: |
+          if [ -z "${{ secrets.GOOGLE_API_KEY }}" ]; then
+            echo "Error: GOOGLE_API_KEY is not set."
+            exit 1
+          fi
+          if [ -z "${{ secrets.WORKING_DIR }}" ]; then
+            echo "Error: WORKING_DIR is not set."
+            exit 1
+          fi
+
+      - name: Set environment variables
+        run: |
+          echo "GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}" >> $GITHUB_ENV
+          # Use relative path for WORKING_DIR
+          echo "WORKING_DIR=." >> $GITHUB_ENV
+
+      - name: Create .streamlit directory
+        run: mkdir -p ~/.streamlit
+
+      - name: Create secrets.toml file
+        run: |
+          echo "[api_keys]" > ~/.streamlit/secrets.toml
+          echo "google_api_key = '${{ secrets.GOOGLE_API_KEY }}'" >> ~/.streamlit/secrets.toml
+          echo "working_dir = '${{ secrets.WORKING_DIR }}'" >> ~/.streamlit/secrets.toml
+
+      - name: Run Crime Data Notebook
+        run: |
+          papermill "notebook/Crime Data.ipynb" "notebook/Crime Data_output.ipynb"
+        continue-on-error: false
+
+      - name: Run charlottesville_crime_data.py script via Streamlit
+        run: |
+          # Launch the Streamlit app in headless mode on port 8501
+          python -m streamlit run charlottesville_crime_data.py --server.headless true --server.enableCORS false --server.port 8501 &
+          # Wait for 30 seconds to allow the app to run its tasks (adjust if needed)
+          sleep 30
+          # Kill the background Streamlit process so the job can complete
+          kill $(jobs -p)
+        continue-on-error: false
+
+      - name: Commit and push changes if any
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          # Set the remote URL to use the GITHUB_TOKEN for authentication
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/ckalibsnelson/crime-data.git
+          git add .
+          git diff-index --quiet HEAD || (git commit -m "Daily data refresh" && git push)

@@ -1,0 +1,5 @@
+# Ignore the config, env, and secrets files (sensitive info)
+config.py
+.env
+secrets.toml
+.streamlit\secrets.toml
