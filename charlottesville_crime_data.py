@@ -52,9 +52,6 @@ def load_data():
     # Use WORKING_DIR from Streamlit Cloud secrets
     working_dir = WORKING_DIR
 
-    # Debugging: Print the value of WORKING_DIR
-    #st.write(f"working_dir: {working_dir}")    
-
     # Construct the full path to your Excel file
     if working_dir:
         csv_path = os.path.join(working_dir, "data", "charlottesville_crime_incidents.xlsx")
@@ -62,9 +59,6 @@ def load_data():
         st.error("WORKING_DIR is not set. Please check your configuration.")
         return pd.DataFrame(), None  # Return an empty DataFrame and None to avoid further errors
     
-    # Debugging: Print the constructed file path
-    #st.write(f"Constructed file path: {csv_path}")
-
     # Check if the file is a valid Excel file
     if not csv_path.endswith('.xlsx'):
         st.error(f"File at {csv_path} is not a valid Excel file.")
@@ -87,12 +81,12 @@ def load_data():
         st.error("The 'Date' column is missing from the data. Please check your data source.")
         return pd.DataFrame(), csv_path
     
-    # Debugging: Print the columns of the DataFrame
-    #st.write(f"DataFrame columns after loading: {df.columns.tolist()}")
-    
     return df, csv_path
 
-# Load the data
+# Clear the cached data (force refresh)
+load_data.clear()
+
+# Now load the data
 df, csv_path = load_data()
 
 # Check if 'Date' column exists
