@@ -44,7 +44,7 @@ jobs:
       - name: Set environment variables
         run: |
           echo "GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}" >> $GITHUB_ENV
-          # Use relative path for WORKING_DIR
+          # Using relative path for WORKING_DIR
           echo "WORKING_DIR=." >> $GITHUB_ENV
 
       - name: Create .streamlit directory
