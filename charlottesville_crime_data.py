@@ -16,15 +16,13 @@ load_dotenv()
 # First, try to use secrets from the .streamlit/secrets.toml file in the working directory
 try:
     secrets_path = os.path.join(os.getcwd(), ".streamlit", "secrets.toml")
-    if (os.path.exists(secrets_path)):
+    if os.path.exists(secrets_path):
         st.secrets = st.secrets.from_toml(secrets_path)
         GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
         WORKING_DIR = st.secrets["WORKING_DIR"]
-        #st.info("Using secrets from .streamlit/secrets.toml")
     else:
         raise FileNotFoundError
 except Exception as e:
-    #st.warning(f"Error accessing .streamlit/secrets.toml: {e}")
     GOOGLE_API_KEY = None
     WORKING_DIR = None
 
@@ -34,60 +32,56 @@ if GOOGLE_API_KEY is None or WORKING_DIR is None:
         secrets = st.secrets["general"]
         GOOGLE_API_KEY = secrets["GOOGLE_API_KEY"]
         WORKING_DIR = secrets["WORKING_DIR"]
-        #st.info("Using secrets from Streamlit Cloud")
     except Exception as e:
         st.warning(f"Error accessing st.secrets: {e}")
         GOOGLE_API_KEY = None
         WORKING_DIR = None
 
-# Debugging: Print the value of WORKING_DIR
-#st.write(f"WORKING_DIR: {WORKING_DIR}")
-
 #######################################
-# Page Config & Data Loading
+# Data Loading with Caching & Refresh Option
 #######################################
 
-@st.cache_data(ttl=60)  # refresh cache every 60 seconds
-def load_data():
-    # Use WORKING_DIR from Streamlit Cloud secrets
+@st.cache_data(ttl=60)
+def load_data(file_mtime):
+    # Use WORKING_DIR from secrets
     working_dir = WORKING_DIR
-
-    # Construct the full path to your Excel file
     if working_dir:
-        csv_path = os.path.join(working_dir, "data", "charlottesville_crime_incidents.xlsx")
+        excel_path = os.path.join(working_dir, "data", "charlottesville_crime_incidents.xlsx")
     else:
         st.error("WORKING_DIR is not set. Please check your configuration.")
-        return pd.DataFrame(), None  # Return an empty DataFrame and None to avoid further errors
-    
-    # Check if the file is a valid Excel file
-    if not csv_path.endswith('.xlsx'):
-        st.error(f"File at {csv_path} is not a valid Excel file.")
-        return pd.DataFrame(), csv_path
-    
-    # Read the Excel file (requires openpyxl)
+        return pd.DataFrame(), None
+
+    if not excel_path.endswith('.xlsx'):
+        st.error(f"File at {excel_path} is not a valid Excel file.")
+        return pd.DataFrame(), excel_path
+
     try:
-        df = pd.read_excel(csv_path)
+        df = pd.read_excel(excel_path)
     except Exception as e:
-        st.error(f"Error reading Excel file at {csv_path}: {e}. Make sure 'openpyxl' is installed.")
-        return pd.DataFrame(), csv_path
-    
-    # Convert zip column to string
+        st.error(f"Error reading Excel file at {excel_path}: {e}. Make sure 'openpyxl' is installed.")
+        return pd.DataFrame(), excel_path
+
     df["zip"] = df["zip"].astype(str)
 
-    # Convert 'Date' column to datetime
     if 'Date' in df.columns:
         df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
     else:
         st.error("The 'Date' column is missing from the data. Please check your data source.")
-        return pd.DataFrame(), csv_path
-    
-    return df, csv_path
+        return pd.DataFrame(), excel_path
 
-# Clear the cached data (force refresh)
-load_data.clear()
+    return df, excel_path
 
-# Now load the data
-df, csv_path = load_data()
+# Determine the path and get its modification time
+data_file = os.path.join(WORKING_DIR, "data", "charlottesville_crime_incidents.xlsx")
+file_mtime = os.path.getmtime(data_file)
+
+# Add a refresh button to force a reload of the data
+if st.button("Refresh Data"):
+    load_data.clear()  # Clear the cached data
+    file_mtime = os.path.getmtime(data_file)
+    df, csv_path = load_data(file_mtime)
+else:
+    df, csv_path = load_data(file_mtime)
 
 # Check if 'Date' column exists
 if 'Date' not in df.columns:
@@ -96,8 +90,6 @@ if 'Date' not in df.columns:
 
 # Calculate the latest refresh date
 latest_refresh_date = df["Date"].max().date()
-
-# Add a date for when the dashboard was last refreshed
 dashboard_refresh_date = datetime.datetime.now().date()
 
 #######################################
