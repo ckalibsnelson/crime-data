@@ -1,0 +1,10 @@
+#requirements
+plotly
+python-dotenv
+openpyxl
+jupyter
+ipykernel
+pandas
+googlemaps
+geopy
+streamlit
