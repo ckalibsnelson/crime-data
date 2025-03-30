@@ -75,13 +75,8 @@ def load_data(file_mtime):
 data_file = os.path.join(WORKING_DIR, "data", "charlottesville_crime_incidents.xlsx")
 file_mtime = os.path.getmtime(data_file)
 
-# Add a refresh button to force a reload of the data
-if st.button("Refresh Data"):
-    load_data.clear()  # Clear the cached data
-    file_mtime = os.path.getmtime(data_file)
-    df, csv_path = load_data(file_mtime)
-else:
-    df, csv_path = load_data(file_mtime)
+# Load the data without the refresh button
+df, csv_path = load_data(file_mtime)
 
 # Check if 'Date' column exists
 if 'Date' not in df.columns:
@@ -148,7 +143,7 @@ with st.sidebar.expander("Color Palette", expanded=False):
     }
     selected_palette = st.selectbox("Select a Color Palette", list(color_palettes.keys()), index=0)
 
-with st.sidebar.expander("Date Range", expanded=False):
+with st.sidebar.expander("Date Range", expanded=True):
     min_date = df["Date"].dropna().min().date()
     max_date = df["Date"].dropna().max().date()
     start_date = st.date_input("Start Date", min_value=min_date, max_value=max_date, value=min_date)
@@ -412,7 +407,7 @@ elif resolution == "Weekly":
     )
 elif resolution == "Monthly":
     time_series = (
-        filtered_df.groupby(pd.Grouper(key="Date", freq="M"))["IncidentID"]
+        filtered_df.groupby(pd.Grouper(key="Date", freq="ME"))["IncidentID"]
         .nunique()
         .reset_index(name="Count")
     )
@@ -448,6 +443,112 @@ fig_time_series.update_traces(
 
 fig_time_series.update_layout(xaxis_title="Date", yaxis_title="Unique Incidents")
 st.plotly_chart(fig_time_series, use_container_width=True)
+
+#######################################
+# New Visualization: Top 5 Offenses Over Time
+#######################################
+
+st.subheader("Top 5 Offenses Over Time")
+
+# Get the top 5 offenses based on the filtered data
+top_5_offenses = (
+    filtered_df.groupby("Offense")["IncidentID"]
+    .nunique()
+    .nlargest(5)
+    .index
+)
+
+# Filter the data to include only the top 5 offenses
+filtered_top_offenses = filtered_df[filtered_df["Offense"].isin(top_5_offenses)]
+
+# Group data by offense and the selected resolution
+if resolution == "Daily":
+    offenses_time_series = (
+        filtered_top_offenses.groupby([filtered_top_offenses["Date"].dt.date, "Offense"])["IncidentID"]
+        .nunique()
+        .reset_index(name="Count")
+    )
+elif resolution == "Weekly":
+    offenses_time_series = (
+        filtered_top_offenses.groupby([pd.Grouper(key="Date", freq="W"), "Offense"])["IncidentID"]
+        .nunique()
+        .reset_index(name="Count")
+    )
+elif resolution == "Monthly":
+    offenses_time_series = (
+        filtered_top_offenses.groupby([pd.Grouper(key="Date", freq="ME"), "Offense"])["IncidentID"]
+        .nunique()
+        .reset_index(name="Count")
+    )
+elif resolution == "Quarterly":
+    offenses_time_series = (
+        filtered_top_offenses.groupby([pd.Grouper(key="Date", freq="Q"), "Offense"])["IncidentID"]
+        .nunique()
+        .reset_index(name="Count")
+    )
+elif resolution == "Yearly":
+    offenses_time_series = (
+        filtered_top_offenses.groupby([pd.Grouper(key="Date", freq="Y"), "Offense"])["IncidentID"]
+        .nunique()
+        .reset_index(name="Count")
+    )
+
+# Create a line chart for the top 5 offenses over time
+fig_offenses_time_series = px.line(
+    offenses_time_series,
+    x="Date",
+    y="Count",
+    color="Offense",
+    title=f"Top 5 Offenses Over Time ({resolution} View)",
+    color_discrete_sequence=px.colors.qualitative.Plotly
+)
+
+fig_offenses_time_series.update_layout(xaxis_title="Date", yaxis_title="Incident Count")
+st.plotly_chart(fig_offenses_time_series, use_container_width=True)
+
+#######################################
+# Geographic Visualization (Heat Map)
+#######################################
+
+st.subheader("Geographic Visualization")
+
+# Add a note about zoom functionality
+st.markdown("**Note:** Use the zoom controls at the top right corner of the map or the scroll on your mouse to zoom in and out.")
+
+# Create a column to represent the intensity of incidents per location
+filtered_df["IncidentCount"] = filtered_df.groupby(["lat", "lon"])["IncidentID"].transform("count")
+
+# Use density_map for geographic visualization
+fig_geo = px.density_map(
+    filtered_df,
+    lat="lat",
+    lon="lon",
+    z="IncidentCount",  # use the new column for intensity
+    radius=10,
+    center=dict(lat=38.0293, lon=-78.4767),  # approximate center of Charlottesville
+    zoom=13,
+    map_style="open-street-map",  # Corrected argument
+    title="Incident Frequency by Geography"
+)
+fig_geo.update_layout(
+    height=1200,
+    width=1200
+)
+
+# Calculate the total number of incidents for percentage calculation
+total_incidents_geo = filtered_df["IncidentID"].nunique()
+
+# Update hover template to show neighborhood, zip code, and percentage of total incidents
+fig_geo.update_traces(
+    hovertemplate="<b>Location:</b> %{lat}, %{lon}<br>" +
+                  "<b>Neighborhood:</b> %{customdata[0]}<br>" +
+                  "<b>Zip Code:</b> %{customdata[1]}<br>" +
+                  "<b>Incident Count:</b> %{z}<br>" +
+                  "<b>Percent of Total Incidents:</b> %{customdata[2]:.1%}<extra></extra>",
+    customdata=filtered_df[["neighborhood", "zip", "IncidentCount"]].apply(lambda row: (row["neighborhood"], row["zip"], row["IncidentCount"] / total_incidents_geo), axis=1)
+)
+
+st.plotly_chart(fig_geo, use_container_width=True, config={"scrollZoom": True})
 
 #######################################
 # Detailed Visualizations (Side by Side)
@@ -554,74 +655,28 @@ fig_tod.update_traces(
 col4.plotly_chart(fig_tod, use_container_width=True)
 
 #######################################
-# Offense & Reporting Officer Visualizations
+# Offense Visualization (Top 20 Bar Chart)
 #######################################
 
-st.subheader("Offense & Reporting Officer Visualizations")
+st.subheader("Top 20 Offenses")
 
-# Offense Visualizations: Top 10 and Bottom 10 Offenses
-col_off_top, col_off_bottom = st.columns(2)
-
-offense_counts_filtered = (
-    filtered_df.groupby("Offense")["IncidentID"]
-    .nunique()
-    .reset_index(name="Count")
-)
-
-top10_offenses = offense_counts_filtered.sort_values("Count", ascending=False).head(10)
-top10_offenses["PercentTotal"] = (top10_offenses["Count"] / total_incidents) * 100
-fig_top10_offenses = px.bar(
-    top10_offenses, 
+# Adjust layout to use more horizontal space
+top20_offenses = offense_counts.sort_values("Count", ascending=False).head(20)
+top20_offenses["PercentTotal"] = (top20_offenses["Count"] / total_incidents) * 100
+fig_top20_offenses = px.bar(
+    top20_offenses, 
     x="Offense", 
     y="PercentTotal", 
-    title="Top 10 Offenses",
+    title="Top 20 Offenses",
     color_discrete_sequence=palette, 
     text_auto=True
 )
-fig_top10_offenses.update_traces(
+fig_top20_offenses.update_traces(
     texttemplate='%{y:.1f}%',
     hovertemplate="<b>Offense:</b> %{x}<br><b>Percent of Total:</b> %{y:.1f}%<extra></extra>"
 )
-col_off_top.plotly_chart(fig_top10_offenses, use_container_width=True)
-
-bottom10_offenses = offense_counts_filtered.sort_values("Count", ascending=True).head(10)
-bottom10_offenses["PercentTotal"] = (bottom10_offenses["Count"] / total_incidents) * 100
-fig_bottom10_offenses = px.bar(
-    bottom10_offenses, 
-    x="Offense", 
-    y="PercentTotal", 
-    title="Bottom 10 Offenses",
-    color_discrete_sequence=palette, 
-    text_auto=True
-)
-fig_bottom10_offenses.update_traces(
-    texttemplate='%{y:.1f}%',
-    hovertemplate="<b>Offense:</b> %{x}<br><b>Percent of Total:</b> %{y:.1f}%<extra></extra>"
-)
-col_off_bottom.plotly_chart(fig_bottom10_offenses, use_container_width=True)
-
-# Reporting Officer Visualization – sort in descending order.
-st.subheader("Reporting Officer Visualization")
-reporting_counts = (
-    filtered_df.groupby("ReportingOfficer")["IncidentID"]
-    .nunique()
-    .reset_index(name="Count")
-)
-reporting_counts["PercentTotal"] = (reporting_counts["Count"] / total_incidents) * 100
-reporting_counts = reporting_counts.sort_values("Count", ascending=False)
-fig_reporting = px.bar(
-    reporting_counts, 
-    x="ReportingOfficer", 
-    y="PercentTotal", 
-    title="Reporting Officer Breakdown",
-    color_discrete_sequence=palette, 
-    text_auto=True
-)
-fig_reporting.update_traces(
-    texttemplate='%{y:.1f}%',
-    hovertemplate="<b>Reporting Officer:</b> %{x}<br><b>Percent of Total:</b> %{y:.1f}%<extra></extra>"
-)
-st.plotly_chart(fig_reporting, use_container_width=True)
+fig_top20_offenses.update_layout(height=600, width=1200)  # Increase width for better horizontal space usage
+st.plotly_chart(fig_top20_offenses, use_container_width=True)
 
 #######################################
 # Location Distributions (Pie Charts)
@@ -629,10 +684,10 @@ st.plotly_chart(fig_reporting, use_container_width=True)
 
 st.subheader("Location Distributions")
 
-# First row: Zip Distribution and Neighborhood Distribution
-col_zip, col_nb = st.columns(2)
+# Place Zip Distribution, Neighborhood Distribution, and FullStreet Distribution side by side
+col_zip, col_nb, col_fs = st.columns(3)
 
-# Zip Distribution (All) – same size as others.
+# Zip Distribution (All)
 zip_counts = (
     filtered_df.groupby("zip")["IncidentID"]
     .nunique()
@@ -682,9 +737,6 @@ fig_nb.update_traces(
 fig_nb.update_layout(height=800, width=800)
 col_nb.plotly_chart(fig_nb, use_container_width=True)
 
-# Second row: FullStreet Distribution and Offense Distribution
-col_fs, col_offense = st.columns(2)
-
 # FullStreet Distribution (Top 25)
 fs_counts = (
     filtered_df.groupby("FullStreet")["IncidentID"]
@@ -710,70 +762,6 @@ fig_fs.update_traces(
 )
 fig_fs.update_layout(height=800, width=800)
 col_fs.plotly_chart(fig_fs, use_container_width=True)
-
-# Offense Distribution (Top 25)
-offense_counts = (
-    filtered_df.groupby("Offense")["IncidentID"]
-    .nunique()
-    .reset_index(name="Count")
-)
-total_offense = offense_counts["Count"].sum()
-top25_offense = offense_counts.sort_values("Count", ascending=False).head(25)
-top25_offense["PercentTotal"] = top25_offense["Count"] / total_offense * 100
-fig_offense = px.pie(
-    top25_offense,
-    names="Offense",
-    values="Count",
-    title="Offense Distribution (Top 25)",
-    hole=0.3,
-    color_discrete_sequence=palette
-)
-fig_offense.update_traces(
-    text=[f"{pct:.1f}%" for pct in top25_offense["PercentTotal"]],
-    textinfo="text",
-    textposition="inside",
-    hovertemplate="<b>%{label}</b><br>Percentage: %{text}"
-)
-fig_offense.update_layout(height=800, width=800)
-col_offense.plotly_chart(fig_offense, use_container_width=True)
-
-#######################################
-# Geographic Visualization (Heat Map)
-#######################################
-
-st.subheader("Geographic Visualization")
-
-# Create a column to represent the intensity of incidents per location
-filtered_df["IncidentCount"] = filtered_df.groupby(["lat", "lon"])["IncidentID"].transform("count")
-
-# Use density_mapbox for geographic visualization
-fig_geo = px.density_mapbox(
-    filtered_df,
-    lat="lat",
-    lon="lon",
-    z="IncidentCount",  # use the new column for intensity
-    radius=10,
-    center=dict(lat=38.0293, lon=-78.4767),  # approximate center of Charlottesville
-    zoom=14,
-    mapbox_style="open-street-map",
-    title="Incident Frequency by Geography"
-)
-fig_geo.update_layout(height=1200, width=1200)
-
-# Calculate the total number of incidents for percentage calculation
-total_incidents_geo = filtered_df["IncidentID"].nunique()
-
-# Update hover template to show neighborhood, zip code, and percentage of total incidents
-fig_geo.update_traces(
-    hovertemplate="<b>Location:</b> %{lat}, %{lon}<br>" +
-                  "<b>Neighborhood:</b> %{customdata[0]}<br>" +
-                  "<b>Zip Code:</b> %{customdata[1]}<br>" +
-                  "<b>Incident Count:</b> %{z}<br>" +
-                  "<b>Percent of Total Incidents:</b> %{customdata[2]:.1%}<extra></extra>",
-    customdata=filtered_df[["neighborhood", "zip", "IncidentCount"]].apply(lambda row: (row["neighborhood"], row["zip"], row["IncidentCount"] / total_incidents_geo), axis=1)
-)
-
-st.plotly_chart(fig_geo, use_container_width=True)
 
 #######################################
 # Interactive Table of Recent Incidents
@@ -829,4 +817,4 @@ st.markdown("""
 #st.write(f"Path of the CSV file: {csv_path}")
 
 # Print the working directory at the end
-# st.write(f"Current working directory: {os.getcwd()}")
+# st.write(f"Current working directory: {os.getcwd()")
