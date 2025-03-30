@@ -390,8 +390,8 @@ row2[5].metric("Most Frequent Offense", f"{most_freq_offense} ({offense_percent_
 
 st.subheader("Incidents Over Time")
 
-# Add "Yearly" as a resolution option.
-resolution = st.selectbox("Select Resolution", ["Daily", "Weekly", "Monthly", "Quarterly", "Yearly"], index=0)
+# Set default resolution to "Monthly"
+resolution = st.selectbox("Select Resolution", ["Daily", "Weekly", "Monthly", "Quarterly", "Yearly"], index=2)
 
 if resolution == "Daily":
     time_series = (
@@ -526,7 +526,7 @@ fig_geo = px.density_map(
     z="IncidentCount",  # use the new column for intensity
     radius=10,
     center=dict(lat=38.0293, lon=-78.4767),  # approximate center of Charlottesville
-    zoom=13,
+    zoom=12.6,
     map_style="open-street-map",  # Corrected argument
     title="Incident Frequency by Geography"
 )
@@ -677,6 +677,37 @@ fig_top20_offenses.update_traces(
 )
 fig_top20_offenses.update_layout(height=600, width=1200)  # Increase width for better horizontal space usage
 st.plotly_chart(fig_top20_offenses, use_container_width=True)
+
+#######################################
+# Reporting Officer Visualization
+#######################################
+
+st.subheader("Reporting Officer Distribution")
+
+# Calculate the count and percentage for each reporting officer
+reporting_counts = (
+    filtered_df.groupby("ReportingOfficer")["IncidentID"]
+    .nunique()
+    .reset_index(name="Count")
+    .sort_values("Count", ascending=False)
+)
+reporting_counts["PercentTotal"] = (reporting_counts["Count"] / total_incidents) * 100
+
+# Create a bar chart for reporting officer distribution
+fig_reporting_officer = px.bar(
+    reporting_counts,
+    x="ReportingOfficer",
+    y="PercentTotal",
+    title="Reporting Officer Distribution",
+    color_discrete_sequence=palette,
+    text_auto=True
+)
+fig_reporting_officer.update_traces(
+    texttemplate='%{y:.1f}%',
+    hovertemplate="<b>Reporting Officer:</b> %{x}<br><b>Percent of Total:</b> %{y:.1f}%<extra></extra>"
+)
+fig_reporting_officer.update_layout(height=600, width=1200)  # Adjust layout for better visualization
+st.plotly_chart(fig_reporting_officer, use_container_width=True)
 
 #######################################
 # Location Distributions (Pie Charts)
