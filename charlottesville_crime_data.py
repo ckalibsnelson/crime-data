@@ -331,7 +331,7 @@ if current_quarter == 1:
 else:
     prev_quarter = current_quarter - 1
     quarter_start_prev = datetime.date(current_year, (prev_quarter - 1) * 3 + 1, 1)
-    quarter_end_prev = (datetime.date(current_year, prev_quarter * 3 + 1, 1) - pd.Timedelta(days=1)).date()
+    quarter_end_prev = (datetime.date(current_year, prev_quarter * 3 + 1, 1) - datetime.timedelta(days=1))
 
 previous_quarter_count = filtered_df[(filtered_df["Date"].dt.date >= quarter_start_prev) & (filtered_df["Date"].dt.date <= quarter_end_prev)]["IncidentID"].nunique()
 if previous_quarter_count != 0:
