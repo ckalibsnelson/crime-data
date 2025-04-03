@@ -740,7 +740,7 @@ fig_zip.update_traces(
     textposition="inside",
     hovertemplate="<b>%{label}</b><br>Percentage: %{text}<extra></extra>"
 )
-fig_zip.update_layout(height=800, width=800)
+fig_zip.update_layout(height=600, width=600)  # Set consistent size
 col_zip.plotly_chart(fig_zip, use_container_width=True)
 
 # Neighborhood Distribution (All)
@@ -765,7 +765,7 @@ fig_nb.update_traces(
     textposition="inside",
     hovertemplate="<b>%{label}</b><br>Percentage: %{text}<extra></extra>"
 )
-fig_nb.update_layout(height=800, width=800)
+fig_nb.update_layout(height=600, width=600)  # Set consistent size
 col_nb.plotly_chart(fig_nb, use_container_width=True)
 
 # FullStreet Distribution (Top 25)
@@ -791,7 +791,7 @@ fig_fs.update_traces(
     textposition="inside",
     hovertemplate="<b>%{label}</b><br>Percentage: %{text}<extra></extra>"
 )
-fig_fs.update_layout(height=800, width=800)
+fig_fs.update_layout(height=600, width=600)  # Set consistent size
 col_fs.plotly_chart(fig_fs, use_container_width=True)
 
 #######################################
