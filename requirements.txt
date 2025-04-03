@@ -9,3 +9,5 @@ googlemaps
 geopy
 streamlit
 scikit-learn
+seaborn
+matplotlib
