@@ -358,16 +358,30 @@ else:
     most_freq_count = 0
     offense_percent_str = "N/A"
 
-# Layout for first row of metrics (6 metrics)
-row1 = st.columns(6)
+# Calculate additional metrics
+six_months_ago = current_date - pd.DateOffset(months=6)
+incidents_last_6_months = filtered_df[filtered_df["Date"] >= six_months_ago]["IncidentID"].nunique()
+
+current_quarter = ((current_month - 1) // 3) + 1
+quarter_start = datetime.date(current_year, (current_quarter - 1) * 3 + 1, 1)
+incidents_this_quarter = filtered_df[(filtered_df["Date"].dt.date >= quarter_start) & (filtered_df["Date"].dt.date <= current_date.date())]["IncidentID"].nunique()
+
+daily_counts = filtered_df.groupby(filtered_df["Date"].dt.date)["IncidentID"].nunique()
+avg_crimes_per_day = daily_counts.mean()
+median_crimes_per_day = daily_counts.median()
+
+# Layout for first row of metrics (8 metrics)
+row1 = st.columns(8)
 row1[0].metric("Total Incidents", total_incidents)
 row1[1].metric("Incidents Last Month", incidents_last_month)
-row1[2].metric("Incidents This Month", incidents_this_month)
-row1[3].metric("Incidents Last 2 Weeks", incidents_last2weeks)
-row1[4].metric("Incidents Last 7 Days", incidents_last7days)
-row1[5].metric("Incidents Last 3 Days", incidents_last3days)
+row1[2].metric("Incidents Last 6 Months", incidents_last_6_months)
+row1[3].metric("Incidents This Quarter", incidents_this_quarter)
+row1[4].metric("Incidents This Month", incidents_this_month)
+row1[5].metric("Incidents Last 2 Weeks", incidents_last2weeks)
+row1[6].metric("Incidents Last 7 Days", incidents_last7days)
+row1[7].metric("Incidents Last 3 Days", incidents_last3days)
 
-# Layout for second row of metrics (6 metrics)
+# Layout for second row of metrics (8 metrics)
 
 # Conditional coloring for growth metrics
 def get_color(value):
@@ -375,14 +389,15 @@ def get_color(value):
         return "off"
     return "inverse" if float(value[:-1]) < 0 else "normal"
 
-row2 = st.columns(6)
+row2 = st.columns(8)
 row2[0].metric("Incidents This Year", incidents_this_year)
 row2[1].metric("YoY Growth %", yoy_growth_str, delta_color=get_color(yoy_growth_str))
 row2[2].metric("QoQ Growth %", qoq_growth_str, delta_color=get_color(qoq_growth_str))
 row2[3].metric("MoM Growth %", mom_growth_str, delta_color=get_color(mom_growth_str))
 row2[4].metric("WoW Growth %", wow_growth_str, delta_color=get_color(wow_growth_str))
-# For Most Frequent Offense, display the percentage without the arrow.
-row2[5].metric("Most Frequent Offense", f"{most_freq_offense} ({offense_percent_str})")
+row2[5].metric("Avg. Crimes per Day", f"{avg_crimes_per_day:.1f}")
+row2[6].metric("Median Crimes per Day", f"{median_crimes_per_day:.1f}")
+row2[7].metric("Most Frequent Offense", f"{most_freq_offense} ({offense_percent_str})")
 
 #######################################
 # First Visualization: Incidents Over Time (Full Width)
@@ -424,6 +439,11 @@ elif resolution == "Yearly":
         .reset_index(name="Count")
     )
 
+# Calculate percentiles for the selected resolution
+percentile_25 = time_series["Count"].quantile(0.25)
+percentile_50 = time_series["Count"].median()
+percentile_75 = time_series["Count"].quantile(0.75)
+
 # Use a bar chart instead of a line chart.
 fig_time_series = px.bar(
     time_series,
@@ -431,6 +451,45 @@ fig_time_series = px.bar(
     y="Count",
     title=f"Incidents Over Time ({resolution} View)",
     color_discrete_sequence=[px.colors.qualitative.Plotly[0]]
+)
+
+# Add horizontal lines for percentiles with matching annotation colors, resolution, and counts
+fig_time_series.add_hline(
+    y=percentile_25,
+    line_dash="dot",
+    line_color="white",
+    annotation_text=f"25th % ({resolution}): {percentile_25:.1f}",
+    annotation_position="top left",
+    annotation_font_color="white"
+)
+fig_time_series.add_hline(
+    y=percentile_50,
+    line_dash="solid",
+    line_color="orange",
+    annotation_text=f"Median ({resolution}): {percentile_50:.1f}",
+    annotation_position="top left",
+    annotation_font_color="orange"
+)
+fig_time_series.add_hline(
+    y=percentile_75,
+    line_dash="dot",
+    line_color="purple",
+    annotation_text=f"75th % ({resolution}): {percentile_75:.1f}",
+    annotation_position="top left",
+    annotation_font_color="purple"
+)
+
+# Add a legend to explain the horizontal lines and position it to the right
+fig_time_series.update_layout(
+    legend=dict(
+        title="Legend",
+        itemsizing="constant",
+        orientation="v",
+        yanchor="middle",
+        y=0.5,
+        xanchor="left",
+        x=1.02
+    )
 )
 
 # Update hover template to show percentage of total incidents
@@ -441,7 +500,10 @@ fig_time_series.update_traces(
     customdata=time_series["Count"] / total_incidents
 )
 
-fig_time_series.update_layout(xaxis_title="Date", yaxis_title="Unique Incidents")
+fig_time_series.update_layout(
+    xaxis_title="Date",
+    yaxis_title="Unique Incidents"
+)
 st.plotly_chart(fig_time_series, use_container_width=True)
 
 #######################################
@@ -839,6 +901,9 @@ st.markdown("""
 - **QoQ Growth %:** Percentage change comparing the current quarter (from its start to today) with the previous complete quarter.
 - **YoY Growth %:** Year-over-Year growth percentage comparing the current year-to-date with the same period last year.
 - **Most Frequent Offense:** The offense with the highest unique incident count (displayed as: offense name (count) - % of total).
+- **25th Percentile (25th %):** The value below which 25% of the incident counts fall.
+- **Median:** The middle value of the incident counts (50th percentile). Denoting or relating to a value or quantity lying at the midpoint of a frequency distribution of observed values or quantities, such that there is an equal probability of falling above or below it.
+- **75th Percentile (75th %):** The value below which 75% of the incident counts fall.
 """)
 
 # Display the message about using secrets from Streamlit Cloud
@@ -848,4 +913,4 @@ st.markdown("""
 #st.write(f"Path of the CSV file: {csv_path}")
 
 # Print the working directory at the end
-# st.write(f"Current working directory: {os.getcwd()")
+# st.write(f"Current working directory: {os.getcwd()}")
