@@ -458,7 +458,7 @@ fig_time_series.add_hline(
     y=percentile_25,
     line_dash="dot",
     line_color="white",
-    annotation_text=f"25th % ({resolution}): {percentile_25:.1f}",
+    annotation_text=f"25th Percentile ({resolution}): {percentile_25:.1f}",
     annotation_position="top left",
     annotation_font_color="white"
 )
@@ -474,7 +474,7 @@ fig_time_series.add_hline(
     y=percentile_75,
     line_dash="dot",
     line_color="purple",
-    annotation_text=f"75th % ({resolution}): {percentile_75:.1f}",
+    annotation_text=f"75th Percentile ({resolution}): {percentile_75:.1f}",
     annotation_position="top left",
     annotation_font_color="purple"
 )
