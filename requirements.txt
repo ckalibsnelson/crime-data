@@ -7,7 +7,7 @@ ipykernel
 pandas>=1.4.0,<3.0
 googlemaps
 geopy
-streamlit>=1.54.0
+streamlit>=1.30.0  # Or whatever is the latest available version
 altair>=4.0.0,<5.0.0
 scikit-learn
 seaborn
